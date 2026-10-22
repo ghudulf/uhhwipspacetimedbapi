@@ -62,6 +62,7 @@ internal static class AdminOperationTests
         async Task<MutationResult> ScheduleOperation(string name, object payload) => (MutationResult)(await operations.ExecuteAsync(name, actor, JsonSerializer.SerializeToElement(payload, ApiProtocol.Json), Id(), default))!;
         var departure = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var nextDay = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        await Reject(() => db.ExecuteReducerAsync(new Reducer.CreateScheduleV2(Id(), actor, route, departure, 2, 20, new() { "1" }, "A", "B", new() { "A", "B" }, departure + 3600000, 5, true, null, null, null, null, true), _ => true));
         var metadata = await ScheduleOperation("schedules.create", new CreateScheduleCommand(route, departure, 2, 20, [nextDay.DayOfWeek.ToString()], "A", "B", ["A", "B"], departure + 3600000, 5, true, ["08:00", "09:00"], [0, 12], "Notes", ["Regular"], false));
         var metadataRow = (ScheduleRow)(await operations.ExecuteAsync("schedules.get", actor, JsonSerializer.SerializeToElement(new EntityRequest(metadata.EntityId)), null, default))!;
         Check(!metadataRow.IsActive && metadataRow.IsRecurring && metadataRow.RouteStops!.SequenceEqual(["A", "B"]) && metadataRow.DaysOfWeek!.Single() == nextDay.DayOfWeek.ToString() && metadataRow.EstimatedStopTimes!.Length == 2 && metadataRow.StopDistances![1] == 12 && metadataRow.StopDurationMinutes == 5 && metadataRow.Notes == "Notes" && metadataRow.BusTypes!.Single() == "Regular", "schedule metadata/initial active flag lost");

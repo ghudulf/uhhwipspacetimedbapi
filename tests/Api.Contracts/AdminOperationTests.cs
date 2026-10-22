@@ -100,6 +100,7 @@ internal static class AdminOperationTests
             ("tickets.create", new CreateTicketCommand(0, 10, 1, "Cash")), ("tickets.create", new CreateTicketCommand(1, -1, 1, "Cash")), ("tickets.create", new CreateTicketCommand(1, 1e12 + 1, 1, "Cash")), ("tickets.update", new UpdateTicketCommand(1)),
             ("schedules.create", new CreateScheduleCommand(1, 2000, 1, 10, ArrivalTime: 1000)), ("schedules.create", new CreateScheduleCommand(1, 1000, 1, 10, RouteStops: ["A"], StopDistances: [1, 2])), ("schedules.update", new UpdateScheduleCommand(1)),
             ("schedules.create", new CreateScheduleCommand(1, 1000, 1, 10, DaysOfWeek: ["Funday"])), ("schedules.update", new UpdateScheduleCommand(1, DaysOfWeek: ["Monday", "monday"])),
+            ("schedules.create", new CreateScheduleCommand(1, 1000, 1, 10, DaysOfWeek: ["1"])),
             ("schedules.update", new UpdateScheduleCommand(1, EstimatedStopTimes: ["25:99"])), ("schedules.update", new UpdateScheduleCommand(1, StopDurationMinutes: 1441)),
             ("users.create", new CreateUserCommand("", "synthetic")), ("users.create", new CreateUserCommand("synthetic", "short")), ("users.update", new UpdateUserCommand(7)), ("users.assign-role", new AssignUserRoleCommand(7, 0)),
             ("roles.create", new CreateRoleCommand(" ")), ("roles.update", new UpdateRoleCommand(7)), ("roles.grant-permission", new GrantRolePermissionCommand(7, 0)), ("roles.create", new CreateRoleCommand("synthetic", PermissionIds: [1, 1])),

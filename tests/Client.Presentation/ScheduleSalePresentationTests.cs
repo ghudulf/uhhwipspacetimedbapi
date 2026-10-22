@@ -30,11 +30,11 @@ internal static class ScheduleSalePresentationTests
             d => d.RouteId = 0, d => d.DepartureTime = null, d => d.ArrivalTime = null, d => d.DepartureTime = DateTimeOffset.UnixEpoch.AddMilliseconds(-1),
             d => d.ArrivalTime = d.DepartureTime!.Value.AddMinutes(-1), d => d.Price = null, d => d.Price = -1, d => d.Price = double.NaN,
             d => d.Price = double.PositiveInfinity, d => d.Price = 1e12 + 1, d => d.StartPoint = " ", d => d.EndPoint = new('x', 201),
-            d => d.DaysOfWeek = [], d => d.DaysOfWeek = ["Thursday", "thursday"], d => d.DaysOfWeek = ["8"], d => d.DaysOfWeek = ["Funday"],
+            d => d.DaysOfWeek = [], d => d.DaysOfWeek = ["Thursday", "thursday"], d => d.DaysOfWeek = ["1"], d => d.DaysOfWeek = ["8"], d => d.DaysOfWeek = ["Funday"],
             d => d.RouteStops = ["A"], d => d.RouteStops = ["A", " "], d => d.RouteStops = Enumerable.Repeat("A", 201).ToArray(),
             d => d.EstimatedStopTimes = ["08:00"], d => d.EstimatedStopTimes = ["24:00", "09:00"],
             d => d.StopDistances = [0], d => d.StopDistances = [0, double.NaN], d => d.StopDistances = [-1, 2],
-            d => d.Notes = new('x', 4001), d => d.BusTypes = [" "], d => d.HasIntegralCounts = false })
+            d => d.Notes = new('x', 4001), d => d.BusTypes = [" "], d => d.HasIntegralCounts = false, d => d.StopDurationMinutes = 1441 })
         { var draft = ScheduleEditorService.DraftFrom(Schedule); invalid(draft); Check(ScheduleEditorService.Validate(draft) != null, "invalid schedule accepted"); }
         var boundary = ScheduleEditorService.DraftFrom(Schedule); boundary.Price = 0; boundary.AvailableSeats = 0;
         Check(ScheduleEditorService.Validate(boundary) == null, "valid zero schedule rejected"); boundary.Price = 1e12;

@@ -49,11 +49,11 @@ public sealed class ScheduleEditorService(ControlDialogHost host)
     public static string? Validate(ScheduleDraft d)
     {
         if (d.RouteId == 0) return "Выберите маршрут. Если список пуст, проверьте право просмотра маршрутов.";
-        if (!d.HasIntegralCounts) return "Число мест и время стоянки должны быть целыми неотрицательными числами.";
+        if (!d.HasIntegralCounts || d.StopDurationMinutes > 1440) return "Число мест и время стоянки должны быть целыми неотрицательными числами; стоянка — не более 1440 минут.";
         if (!d.DepartureTime.HasValue || !d.ArrivalTime.HasValue || d.DepartureTime < DateTimeOffset.UnixEpoch || d.ArrivalTime < d.DepartureTime) return "Укажите даты и время: прибытие не может быть раньше отправления.";
         if (!d.Price.HasValue || !double.IsFinite(d.Price.Value) || d.Price < 0 || d.Price > 1e12) return "Цена должна быть конечным числом от 0 до 1000000000000.";
         if (string.IsNullOrWhiteSpace(d.StartPoint) || string.IsNullOrWhiteSpace(d.EndPoint) || d.StartPoint.Length > 200 || d.EndPoint.Length > 200) return "Укажите начальную и конечную остановки (до 200 символов).";
-        if (d.DaysOfWeek.Length > 7 || d.DaysOfWeek.Any(day => !Enum.TryParse<DayOfWeek>(day, true, out var value) || !Enum.IsDefined(value)) || d.DaysOfWeek.Distinct(StringComparer.OrdinalIgnoreCase).Count() != d.DaysOfWeek.Length || d.IsRecurring && d.DaysOfWeek.Length == 0) return "Выберите уникальные дни недели для повторяющегося расписания (Monday — Sunday).";
+        if (d.DaysOfWeek.Length > 7 || d.DaysOfWeek.Any(day => !Enum.TryParse<DayOfWeek>(day, true, out var value) || !Enum.IsDefined(value) || !string.Equals(day, value.ToString(), StringComparison.OrdinalIgnoreCase)) || d.DaysOfWeek.Distinct(StringComparer.OrdinalIgnoreCase).Count() != d.DaysOfWeek.Length || d.IsRecurring && d.DaysOfWeek.Length == 0) return "Выберите уникальные дни недели для повторяющегося расписания (Monday — Sunday).";
         if (d.RouteStops.Length < 2 || d.RouteStops.Length > 200 || d.RouteStops.Any(s => string.IsNullOrWhiteSpace(s) || s.Length > 200)) return "Укажите от 2 до 200 остановок, по одной в строке (до 200 символов).";
         if (d.EstimatedStopTimes.Length > 0 && (d.EstimatedStopTimes.Length != d.RouteStops.Length || d.EstimatedStopTimes.Any(t => !TimeSpan.TryParseExact(t, @"hh\:mm", CultureInfo.InvariantCulture, out _)))) return "Время каждой остановки задаётся в формате HH:mm; число времён должно совпадать с числом остановок.";
         if (d.StopDistances.Length > 0 && (d.StopDistances.Length != d.RouteStops.Length || d.StopDistances.Any(v => !double.IsFinite(v) || v < 0 || v > 1e9))) return "Расстояния должны соответствовать остановкам и быть конечными числами от 0 до 1000000000.";
@@ -77,7 +77,7 @@ public sealed class ScheduleEditorService(ControlDialogHost host)
         TextBox Lines(string label) { var box = CatalogEditorDialog.Text(label, 50000); box.AcceptsReturn = true; return box; }
         var days = Lines("Дни недели, Monday — Sunday"); var stops = Lines("Остановки"); var times = Lines("Время остановок, HH:mm"); var distances = Lines("Расстояния остановок, км"); var types = Lines("Типы автобусов"); var notes = CatalogEditorDialog.Text("Примечание", 4000);
         NumericUpDown Number(string label, decimal max) { var n = new NumericUpDown { Minimum = 0, Maximum = max, Increment = 1 }; AutomationProperties.SetName(n, label); return n; }
-        var price = Number("Цена, BYN", 1000000000000m); var seats = Number("Доступные места", uint.MaxValue); var duration = Number("Стоянка, минут", uint.MaxValue);
+        var price = Number("Цена, BYN", 1000000000000m); var seats = Number("Доступные места", uint.MaxValue); var duration = Number("Стоянка, минут", 1440);
         var active = new CheckBox { Content = "Активен" }; var recurring = new CheckBox { Content = "Повторяющееся" };
         var attempt = _drafts.Get(original?.Id ?? 0, () => new CatalogEditorAttempt<ScheduleRow, ScheduleDraft>(original, DraftFrom, r => r.Revision, Validate,
             (d, revision, id, cancellation) => original == null

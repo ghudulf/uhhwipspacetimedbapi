@@ -155,7 +155,7 @@ public sealed partial class ApplicationOperations
     private static void AdminSchedule(ulong? departure, ulong? arrival, double? price, string? start, string? end, string[]? stops, string[]? days, string[]? times, double[]? distances, string? notes)
     {
         AdminPrice(price); AdminText(start, 200); AdminText(end, 200); AdminText(notes, 4000); AdminArray(stops); AdminArray(days); AdminArray(times);
-        if (days != null && (days.Any(d => !Enum.TryParse<DayOfWeek>(d, true, out var day) || !Enum.IsDefined(day)) || days.Distinct(StringComparer.OrdinalIgnoreCase).Count() != days.Length) ||
+        if (days != null && (days.Any(d => !Enum.TryParse<DayOfWeek>(d, true, out var day) || !Enum.IsDefined(day) || !string.Equals(d, day.ToString(), StringComparison.OrdinalIgnoreCase)) || days.Distinct(StringComparer.OrdinalIgnoreCase).Count() != days.Length) ||
             stops is { Length: 1 } || times?.Any(t => !TimeSpan.TryParseExact(t, @"hh\:mm", System.Globalization.CultureInfo.InvariantCulture, out _)) == true) throw new OperationException("validation_failed");
         if (departure > 253402300799999 || arrival > 253402300799999 || departure.HasValue && arrival.HasValue && arrival != 0 && arrival < departure || days?.Length > 7 ||
             distances?.Length > 200 || distances?.Any(d => !double.IsFinite(d) || d < 0 || d > 1e9) == true ||

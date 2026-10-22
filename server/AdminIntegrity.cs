@@ -54,7 +54,7 @@ public static partial class Module
         }
         if (days?.Length > 7)
             throw new Exception("Invalid schedule days.");
-        if (days != null && (days.Any(d => !Enum.TryParse<DayOfWeek>(d, true, out var day) || !Enum.IsDefined(typeof(DayOfWeek), day)) || days.Distinct(StringComparer.OrdinalIgnoreCase).Count() != days.Length)) throw new Exception("Invalid schedule days.");
+        if (days != null && (days.Any(d => !Enum.TryParse<DayOfWeek>(d, true, out var day) || !Enum.IsDefined(typeof(DayOfWeek), day) || !string.Equals(d, day.ToString(), StringComparison.OrdinalIgnoreCase)) || days.Distinct(StringComparer.OrdinalIgnoreCase).Count() != days.Length)) throw new Exception("Invalid schedule days.");
         if (stops is { Length: 1 } || times?.Any(t => !TimeSpan.TryParseExact(t, @"hh\:mm", System.Globalization.CultureInfo.InvariantCulture, out _)) == true) throw new Exception("Invalid schedule stops or times.");
         if (distances?.Length > 200 || distances?.Any(d => !double.IsFinite(d) || d < 0 || d > 1e9) == true)
             throw new Exception("Invalid stop distances.");
