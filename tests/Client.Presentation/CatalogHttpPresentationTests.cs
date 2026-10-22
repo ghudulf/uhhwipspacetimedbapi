@@ -15,6 +15,9 @@ internal static class CatalogHttpPresentationTests
 {
     public static async Task RunAsync(CancellationToken stop)
     {
+        var previousLogger = Serilog.Log.Logger; var outcomes = new Outcomes();
+        using var logger = new Serilog.LoggerConfiguration().MinimumLevel.Debug().WriteTo.Sink(outcomes).CreateLogger();
+        Serilog.Log.Logger = logger;
         var transport = Environment.GetEnvironmentVariable("BRU_TRANSPORT");
         var api = ApiClientService.Instance;
         var cache = typeof(ApiClientService).GetField("_discoveredBaseUrl", BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -120,6 +123,13 @@ internal static class CatalogHttpPresentationTests
             await ExerciseEditor(saleOwner, ct => saleEditor.ShowAsync(saleRow, () => true, ct), "Покупатель", "sales", 13, 19);
             await LookupFailures();
             await SaleDefaults();
+            foreach (var rowType in new[] { "ScheduleRow", "SaleRow" })
+            {
+                var events = outcomes.Events.Where(e => e.Properties.TryGetValue("RowType", out var row) && row.ToString().Contains(rowType) && e.Properties.ContainsKey("OperationId") && e.Properties.ContainsKey("Revision") && e.Properties.ContainsKey("EntityId")).ToArray();
+                foreach (var code in new[] { "conflict", "commit_outcome_unknown", "ok" })
+                    Assert(events.Any(e => e.Properties["Code"].ToString().Contains(code)), rowType + " editor outcome log lost code/ID/revision/entity");
+                File.WriteAllLines("/tmp/opencode/h15-" + rowType + "-editor-outcomes.log", events.Select(e => e.RenderMessage()));
+            }
             Console.WriteLine("PASS employees/maintenance production HTTP adapters: typed snapshots, sync eligibility, revision/operation-ID writes, no uncertain replay and fresh-snapshot delete reconciliation");
             Console.WriteLine("PASS real employee/maintenance editor services: shared HTTP lookups/update/get/receipt wiring, explicit conflict replacement, expected revisions, retained uncertain drafts/operation IDs across close/reopen and receipt-only settlement");
             Console.WriteLine("PASS routes/tickets production HTTP/editor matrix: typed snapshots, unknown deletes, retained conflict/uncertain drafts, receipt reconciliation, atomic revisioned active flag, empty driver/bus notices, visible-capacity guard and hidden-capacity server conflict");
@@ -221,7 +231,13 @@ internal static class CatalogHttpPresentationTests
         {
             lifetime.Cancel(); await server; listener.Stop();
             cache.SetValue(api, previousOrigin); Environment.SetEnvironmentVariable("BRU_TRANSPORT", transport);
+            Serilog.Log.Logger = previousLogger;
         }
+    }
+    private sealed class Outcomes : Serilog.Core.ILogEventSink
+    {
+        public System.Collections.Concurrent.ConcurrentQueue<Serilog.Events.LogEvent> Events { get; } = new();
+        public void Emit(Serilog.Events.LogEvent value) => Events.Enqueue(value);
     }
     private static void Assert(bool value, string message) { if (!value) throw new Exception(message); }
 }
